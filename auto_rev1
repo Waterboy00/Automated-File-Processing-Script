@@ -1,0 +1,79 @@
+auto_1
+
+on run {input, parameters}
+    -- Define folder paths
+    set sourceFolder to POSIX path of "xxxxxx"  -- Replace with your source folder path
+    set processedFolder to POSIX path of "xxxxxx"  -- Replace with your processed folder path
+    
+    -- Ensure the Processed folder exists
+    try
+        do shell script "mkdir -p " & quoted form of processedFolder
+    on error errMsg
+        display dialog "Error creating Processed folder: " & errMsg
+        return
+    end try
+    
+    -- Get list of files in the source folder
+    try
+        set fileList to paragraphs of (do shell script "find " & quoted form of sourceFolder & " -type f")
+    on error errMsg
+        display dialog "Error listing files in source folder: " & errMsg
+        return
+    end try
+    
+    -- Loop through each file in the file list
+    repeat with filePath in fileList
+        set filePath to (filePath as text)
+        set fileName to do shell script "basename " & quoted form of filePath
+        
+        -- Extract order number if format includes "-"
+        set orderNumber to "UNKNOWN"
+        set AppleScript's text item delimiters to "-"
+        try
+            set orderNumber to text item 1 of (fileName as string)
+        on error errMsg
+            display dialog "Order number extraction failed for: " & fileName & ". Error: " & errMsg
+            set AppleScript's text item delimiters to ""
+            return
+        end try
+        set AppleScript's text item delimiters to ""
+        
+        -- Define new file names and printing logic
+        if fileName contains "BOLAction" then
+            set newFileName to "BOL_" & orderNumber & ".pdf"
+            set printerName to "xxxxxx"  -- Replace with the appropriate printer name
+            set printCopies to 2 -- Print 2 copies
+        else if fileName contains "Shipping Label" then
+            set newFileName to "Label_" & orderNumber & ".pdf"
+            set printerName to "xxxxxx"  -- Replace with the appropriate printer name
+            set printCopies to 1 -- Print 1 copy
+        else
+            set newFileName to fileName
+            set printerName to ""
+            set printCopies to 0
+        end if
+        
+        -- Rename and move file
+        set newPath to processedFolder & newFileName
+        try
+            do shell script "mv " & quoted form of filePath & " " & quoted form of newPath
+        on error errMsg
+            display dialog "Error moving file: " & fileName & ". Error: " & errMsg
+            return
+        end try
+        
+        -- Print the file if applicable
+        if printerName is not "" then
+            repeat printCopies times
+                try
+                    do shell script "lpr -P " & printerName & " " & quoted form of newPath
+                on error errMsg
+                    display dialog "Printing failed for: " & newFileName & " on printer: " & printerName & ". Error: " & errMsg
+                    return
+                end try
+            end repeat
+        end if
+    end repeat
+    
+    return input
+end run
